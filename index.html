@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html,body{margin:0}:root{padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}img{max-width:100%}[hidden]{display:none!important}</style>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>833 MHz Spur Fix</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: single reading column; an instrumentation-report look — data in mono, limit lines and margins foregrounded */
+  :root{
+    --bg:#eef1f4; --surface:#ffffff; --surface-2:#f6f8fa;
+    --ink:#161c24; --ink-2:#48545f; --muted:#7b8793; --line:#d8dee5;
+    --accent:#0e7490;            /* instrument teal — "after / clear" */
+    --before:#c2410c;            /* amber-rust — "before / at the limit" */
+    --limit:#dc2626;             /* EN 55032 limit line */
+    --good:#0f766e; --good-soft:#d6ebe8;
+    --warn-soft:#f6e3d6;
+    --font:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0c1014; --surface:#141a21; --surface-2:#1b222b;
+    --ink:#e7edf3; --ink-2:#aeb9c4; --muted:#79858f; --line:#283039;
+    --accent:#22b8cf; --before:#f0813f; --limit:#f0585a;
+    --good:#2dd4bf; --good-soft:#123536; --warn-soft:#352318;
+    color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0c1014; --surface:#141a21; --surface-2:#1b222b;
+    --ink:#e7edf3; --ink-2:#aeb9c4; --muted:#79858f; --line:#283039;
+    --accent:#22b8cf; --before:#f0813f; --limit:#f0585a;
+    --good:#2dd4bf; --good-soft:#123536; --warn-soft:#352318;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--font);line-height:1.55;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:900px;margin:0 auto;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px));
+    padding-block:28px 56px}
+  h1,h2,h3{text-wrap:balance;line-height:1.2;margin:0}
+  h1{font-size:clamp(1.5rem,4.2vw,2.1rem);font-weight:600;letter-spacing:-.01em}
+  h2{font-size:1.18rem;font-weight:600;margin-top:6px}
+  p{margin:0}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);font-weight:600}
+  .sub{color:var(--ink-2)}
+  /* header */
+  header{border-bottom:2px solid var(--line);padding-bottom:20px;margin-bottom:28px}
+  .metarow{display:flex;flex-wrap:wrap;gap:8px 10px;margin-top:16px}
+  .chip{font-family:var(--mono);font-size:.74rem;color:var(--ink-2);background:var(--surface);
+    border:1px solid var(--line);border-radius:5px;padding:4px 9px}
+  .chip b{color:var(--ink);font-weight:600}
+  /* sections */
+  section{margin-top:34px;display:flex;flex-direction:column;gap:14px}
+  .lead{color:var(--ink-2);max-width:66ch}
+  /* adjustment facts */
+  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;
+    background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .fact{background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:3px}
+  .fact .k{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .fact .v{font-family:var(--mono);font-size:.92rem;color:var(--ink);font-weight:500}
+  /* headline stat tiles */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 18px 16px;
+    display:flex;flex-direction:column;gap:7px}
+  .tile .label{font-size:.8rem;color:var(--ink-2)}
+  .tile .flow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .tile .from{font-family:var(--mono);font-size:1.05rem;color:var(--before);text-decoration:line-through;
+    text-decoration-thickness:1.5px;opacity:.85}
+  .tile .arrow{color:var(--muted);font-size:1rem}
+  .tile .to{font-family:var(--mono);font-size:1.9rem;font-weight:600;color:var(--good);line-height:1}
+  .tile .note{font-size:.78rem;color:var(--muted)}
+  .pass{align-self:flex-start;font-family:var(--mono);font-size:.72rem;font-weight:600;
+    color:var(--good);background:var(--good-soft);border-radius:5px;padding:3px 8px}
+  /* chart card */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 16px}
+  .card h3{font-size:.98rem;font-weight:600}
+  .card .cap{font-size:.8rem;color:var(--muted);margin-top:2px}
+  .chartbox{overflow-x:auto}
+  svg{display:block;width:100%;height:auto;min-width:460px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:.78rem;color:var(--ink-2)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:14px;height:10px;border-radius:2px;display:inline-block}
+  .sw.line{height:0;border-top:2px dashed var(--limit);width:18px}
+  .sw.line2{height:0;border-top:2px dashed var(--accent);width:18px}
+  /* scans */
+  .scans{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:560px){.scans{grid-template-columns:1fr}}
+  .scan{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+    display:flex;flex-direction:column}
+  .scan .head{padding:11px 14px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--line)}
+  .scan .dot{width:9px;height:9px;border-radius:50%}
+  .scan.b .dot{background:var(--before)} .scan.a .dot{background:var(--good)}
+  .scan .head b{font-size:.85rem;font-weight:600}
+  .scan .head .t{font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-left:auto}
+  .scan img{width:100%;display:block;background:#fff}
+  .scan .cap{padding:10px 14px;font-size:.78rem;color:var(--ink-2)}
+  .scan .cap b{color:var(--ink);font-weight:600}
+  /* table */
+  .tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:.84rem}
+  th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{background:var(--surface-2);color:var(--ink-2);font-weight:600;font-size:.74rem;
+    text-transform:uppercase;letter-spacing:.05em}
+  tbody td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  tbody tr:last-child td{border-bottom:none}
+  td.ok{color:var(--good)} td.near{color:var(--before)}
+  .tag{font-family:var(--font);font-size:.72rem;padding:1px 6px;border-radius:4px;font-weight:600}
+  .tag.gone{color:var(--good);background:var(--good-soft)}
+  /* interpretation */
+  .notes{display:flex;flex-direction:column;gap:12px}
+  .note-card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:5px}
+  .note-card.caution{border-left-color:var(--before)}
+  .note-card h3{font-size:.92rem;font-weight:600}
+  .note-card p{font-size:.86rem;color:var(--ink-2)}
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);
+    font-size:.76rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">EMC adjustment report · EN 55032</div>
+    <h1>LED facade 833&nbsp;MHz emission — firmware fix, before &amp; after</h1>
+    <p class="sub" style="margin-top:10px;max-width:70ch">
+      The wall emitted a cluster of narrowband spurs across <b>833–875&nbsp;MHz</b>, sitting inside
+      the mobile 800&nbsp;MHz uplink. A custom receiving-card firmware spread the offending clock;
+      the two lab scans below are measured proof of the effect.</p>
+    <div class="metarow">
+      <span class="chip"><b>EUT</b> Y53 P10 outdoor cabinet</span>
+      <span class="chip"><b>Standard</b> EN 55032 (radiated, QP)</span>
+      <span class="chip"><b>Lab</b> 3&nbsp;m chamber, horizontal</span>
+      <span class="chip"><b>Change</b> SDRAM spread-spectrum firmware</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="eyebrow">The adjustment</div>
+    <h2>What was changed</h2>
+    <p class="lead">The 833.3&nbsp;MHz spur is the <b>5th harmonic of the receiving card's
+      166.66&nbsp;MHz SDRAM clock</b>. Rather than move the clock, the fix enables
+      <b>spread-spectrum clocking (SSC)</b>: the clock is dithered over a small range so its harmonic
+      is smeared across several MHz instead of standing as one sharp line — which drops the measured
+      quasi-peak. It ships as a receiving-card firmware update, applied to every card on the wall.</p>
+    <div class="facts">
+      <div class="fact"><span class="k">Technique</span><span class="v">Spread-spectrum clocking (展频)</span></div>
+      <div class="fact"><span class="k">Clock affected</span><span class="v">SDRAM · 166.66 MHz</span></div>
+      <div class="fact"><span class="k">Firmware</span><span class="v">V4.7.4.94 → V4.8.14.85</span></div>
+      <div class="fact"><span class="k">Target band</span><span class="v">833–875 MHz</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">The effect — headline</div>
+    <h2>The 833&nbsp;MHz band, measured</h2>
+    <div class="tiles">
+      <div class="tile">
+        <span class="label">Peak emission at 833.3&nbsp;MHz (PK)</span>
+        <div class="flow">
+          <span class="from mono">53.4</span><span class="arrow">→</span>
+          <span class="to mono">≤&nbsp;41</span><span class="mono" style="color:var(--muted);font-size:.8rem">dBµV/m</span>
+        </div>
+        <span class="note">No discrete spur remains in the band — trace drops into the broadband floor.</span>
+      </div>
+      <div class="tile">
+        <span class="label">Margin to the EN 55032 limit</span>
+        <div class="flow">
+          <span class="from mono">3.6</span><span class="arrow">→</span>
+          <span class="to mono">&gt;&nbsp;16</span><span class="mono" style="color:var(--muted);font-size:.8rem">dB</span>
+        </div>
+        <span class="pass">PASS · both scans</span>
+      </div>
+      <div class="tile">
+        <span class="label">Narrowband spurs in 833–875&nbsp;MHz</span>
+        <div class="flow">
+          <span class="from mono">5 lines</span><span class="arrow">→</span>
+          <span class="to mono">0</span>
+        </div>
+        <span class="note">The whole 833 / 842 / 850 / 866 / 875 comb is gone.</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Reported peaks in the 800&nbsp;MHz band — before vs after</h3>
+      <p class="cap">PK level at each flagged frequency, against the EN 55032 limit (57&nbsp;dBµV/m). Y-axis starts at 30 dBµV/m.</p>
+      <div class="chartbox">
+        <svg viewBox="0 0 720 360" role="img" aria-label="Bar chart of before emission peaks versus the limit, with the after trace floor marked as a line well below.">
+          <!-- gridlines + y labels: 30..60 -->
+          <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--muted)">
+            <!-- y ticks every 5 -->
+            <g>
+              <line x1="70" y1="300" x2="690" y2="300" stroke="var(--line)"/>
+              <text x="60" y="304" text-anchor="end">30</text>
+            </g>
+            <g><line x1="70" y1="255" x2="690" y2="255" stroke="var(--line)"/><text x="60" y="259" text-anchor="end">35</text></g>
+            <g><line x1="70" y1="210" x2="690" y2="210" stroke="var(--line)"/><text x="60" y="214" text-anchor="end">40</text></g>
+            <g><line x1="70" y1="165" x2="690" y2="165" stroke="var(--line)"/><text x="60" y="169" text-anchor="end">45</text></g>
+            <g><line x1="70" y1="120" x2="690" y2="120" stroke="var(--line)"/><text x="60" y="124" text-anchor="end">50</text></g>
+            <g><line x1="70" y1="75" x2="690" y2="75" stroke="var(--line)"/><text x="60" y="79" text-anchor="end">55</text></g>
+            <g><line x1="70" y1="30" x2="690" y2="30" stroke="var(--line)"/><text x="60" y="34" text-anchor="end">60</text></g>
+            <text x="20" y="175" text-anchor="middle" transform="rotate(-90 20 175)" fill="var(--ink-2)" font-size="12">Level [dBµV/m]</text>
+          </g>
+
+          <!-- EN 55032 limit line at 57 -> y=48 -->
+          <line x1="70" y1="57" x2="690" y2="57" stroke="var(--limit)" stroke-width="2" stroke-dasharray="7 5"/>
+          <text x="686" y="51" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--limit)" font-weight="600">EN 55032 limit · 57</text>
+
+          <!-- after floor line at ~40.5 -> y=205.5 -->
+          <line x1="70" y1="205" x2="690" y2="205" stroke="var(--accent)" stroke-width="2" stroke-dasharray="7 5"/>
+          <text x="74" y="199" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--accent)" font-weight="600">after SSC · no spur, floor ≈ 41</text>
+
+          <!-- before bars: freqs 833,842,850,866,875 ; vals 53.39,51.11,50.43,50.11,50.28 -->
+          <!-- y(v)=300-(v-30)*9 ; centers 132,256,380,504,628 ; bar width 54 -->
+          <g>
+            <!-- 833.3 : 53.39 -> y=89.5 -->
+            <rect x="105" y="89.5" width="54" height="210.5" rx="4" fill="var(--before)"/>
+            <text x="132" y="83" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12.5" fill="var(--before)" font-weight="600">53.4</text>
+            <!-- 842 : 51.11 -> y=110 -->
+            <rect x="229" y="110" width="54" height="190" rx="4" fill="var(--before)"/>
+            <text x="256" y="103.5" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12.5" fill="var(--before)" font-weight="600">51.1</text>
+            <!-- 850 : 50.43 -> y=116.1 -->
+            <rect x="353" y="116.1" width="54" height="183.9" rx="4" fill="var(--before)"/>
+            <text x="380" y="109.6" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12.5" fill="var(--before)" font-weight="600">50.4</text>
+            <!-- 866 : 50.11 -> y=119 -->
+            <rect x="477" y="119" width="54" height="181" rx="4" fill="var(--before)"/>
+            <text x="504" y="112.5" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12.5" fill="var(--before)" font-weight="600">50.1</text>
+            <!-- 875 : 50.28 -> y=117.5 -->
+            <rect x="601" y="117.5" width="54" height="182.5" rx="4" fill="var(--before)"/>
+            <text x="628" y="111" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12.5" fill="var(--before)" font-weight="600">50.3</text>
+          </g>
+
+          <!-- x labels -->
+          <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink-2)">
+            <text x="132" y="320" text-anchor="middle">833</text>
+            <text x="256" y="320" text-anchor="middle">842</text>
+            <text x="380" y="320" text-anchor="middle">850</text>
+            <text x="504" y="320" text-anchor="middle">866</text>
+            <text x="628" y="320" text-anchor="middle">875</text>
+            <text x="380" y="344" text-anchor="middle" fill="var(--muted)">Frequency [MHz]</text>
+          </g>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--before)"></span>Before — reported peak</span>
+        <span><span class="sw line"></span>EN 55032 limit (57 dBµV/m)</span>
+        <span><span class="sw line2"></span>After SSC — broadband floor, no discrete spur</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">The effect — measured scans</div>
+    <h2>Full spectrum, 30&nbsp;MHz – 1&nbsp;GHz</h2>
+    <p class="lead">Same cabinet, same chamber, EN 55032 Class A horizontal sweep. Watch the
+      800–900&nbsp;MHz region on the right: the pre-fix comb pressing on the limit flattens into the
+      floor after the firmware.</p>
+    <div class="scans">
+      <div class="scan b">
+        <div class="head"><span class="dot"></span><b>Before adjustment</b><span class="t">PK up to 53.4</span></div>
+        <img src="before-scan.png" alt="Pre-fix spectrum scan showing emission peaks clustered near the limit at 833–875 MHz.">
+        <p class="cap">Marked peaks <b>3–7 cluster at 833–875&nbsp;MHz</b>, each within ~3.6–6.9&nbsp;dB of the limit.</p>
+      </div>
+      <div class="scan a">
+        <div class="head"><span class="dot"></span><b>After adjustment</b><span class="t">peak region ≈ 41</span></div>
+        <img src="after-scan.png" alt="Post-fix spectrum scan showing the 800–900 MHz region dropped into the broadband floor.">
+        <p class="cap">No discrete emission in 833–875&nbsp;MHz; <b>nearest peaks 800.1&nbsp;MHz @&nbsp;40.9</b> and 929.6&nbsp;MHz @&nbsp;42.7.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">The effect — numbers</div>
+    <h2>Reported emissions in 833–875&nbsp;MHz</h2>
+    <div class="tablebox">
+      <table>
+        <thead>
+          <tr><th>Frequency</th><th>Before — PK level</th><th>Before — margin</th><th>After</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>833.3 MHz</td><td class="near">53.39</td><td class="near">3.61 dB</td><td class="ok">— <span class="tag gone">no spur</span></td></tr>
+          <tr><td>842.4 MHz</td><td class="near">51.11</td><td>5.89 dB</td><td class="ok">— <span class="tag gone">no spur</span></td></tr>
+          <tr><td>850.2 MHz</td><td class="near">50.43</td><td>6.57 dB</td><td class="ok">— <span class="tag gone">no spur</span></td></tr>
+          <tr><td>865.5 MHz</td><td class="near">50.11</td><td>6.89 dB</td><td class="ok">— <span class="tag gone">no spur</span></td></tr>
+          <tr><td>875.0 MHz</td><td class="near">50.28</td><td>6.72 dB</td><td class="ok">— <span class="tag gone">no spur</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cap" style="font-size:.78rem;color:var(--muted)">Levels in dBµV/m, EN 55032 limit 57&nbsp;dBµV/m. "After" values are from the post-firmware scan, where none of these frequencies rise above the reporting threshold; the whole 800&nbsp;MHz region sits at ≈&nbsp;40–41&nbsp;dBµV/m.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">Reading the result</div>
+    <h2>What it shows — and what it doesn't</h2>
+    <div class="notes">
+      <div class="note-card">
+        <h3>In the lab, the fix works</h3>
+        <p>The firmware removed the 833&nbsp;MHz spur and the four lines above it. The quasi-peak the
+          standard measures dropped by more than 12&nbsp;dB, and the band now passes with a comfortable
+          margin in both polarisations. This is solid, repeatable chamber evidence that the adjustment
+          does what it was meant to do.</p>
+      </div>
+      <div class="note-card caution">
+        <h3>Two things the lab scan can't settle</h3>
+        <p><b>Scale.</b> This is one cabinet at 3&nbsp;m. A full facade of many cabinets sums to a much
+          higher field on site, so the on-site level must still be confirmed at the real installation.</p>
+        <p><b>The victim's view.</b> Spread-spectrum lowers the sharp peak but spreads the same energy
+          over a wider band. A mobile receiver adds up power across its whole channel, so the on-site
+          check should measure <b>in-channel power in the uplink band</b>, not only the peak — that is
+          the number that tells us whether the real interference is gone.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Source: EMC Test Report — Before / After Adjustment (EN 55032, Y53 P10)</span>
+    <span>Lab: 3 m chamber, quasi-peak detector</span>
+    <span>Levels in dBµV/m · limit 57</span>
+  </footer>
+</div>
+
+</body>
+</html>
