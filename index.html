@@ -87,6 +87,7 @@
   .legend span{display:inline-flex;align-items:center;gap:6px}
   .sw{width:14px;height:10px;border-radius:2px;display:inline-block}
   .sw.line{height:0;border-top:2px dashed var(--limit);width:18px}
+  .sw.line-a{height:0;border-top:2px dashed var(--muted);width:18px}
   .sw.after{background:var(--good-soft);border:2px solid var(--good)}
   /* scans */
   .scans{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -113,6 +114,9 @@
   td.ok{color:var(--good)} td.near{color:var(--before)}
   .tag{font-family:var(--font);font-size:.72rem;padding:1px 6px;border-radius:4px;font-weight:600}
   .tag.gone{color:var(--good);background:var(--good-soft)}
+  .tag.pass{color:var(--good);background:var(--good-soft)}
+  .tag.fail{color:var(--limit);background:var(--warn-soft)}
+  td.fail{color:var(--limit)}
   /* interpretation */
   .notes{display:flex;flex-direction:column;gap:12px}
   .note-card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);
@@ -139,6 +143,7 @@
       <span class="chip"><b>Standard</b> EN 55032 (radiated, QP)</span>
       <span class="chip"><b>Lab</b> 3&nbsp;m chamber, horizontal</span>
       <span class="chip"><b>Change</b> SDRAM spread-spectrum firmware</span>
+      <span class="chip"><b>Tested to</b> Class A · <b>applies</b> Class B</span>
     </div>
   </header>
 
@@ -171,12 +176,12 @@
         <span class="note">No discrete spur remains in the band — trace drops into the broadband floor.</span>
       </div>
       <div class="tile">
-        <span class="label">Margin to the EN 55032 limit</span>
+        <span class="label">Margin to Class B (public-site limit)</span>
         <div class="flow">
-          <span class="from mono">3.6</span><span class="arrow">→</span>
-          <span class="to mono">&gt;&nbsp;16</span><span class="mono" style="color:var(--muted);font-size:.8rem">dB</span>
+          <span class="from mono">−6.4</span><span class="arrow">→</span>
+          <span class="to mono">+6</span><span class="mono" style="color:var(--muted);font-size:.8rem">dB</span>
         </div>
-        <span class="pass">PASS · both scans</span>
+        <span class="pass">FAIL → PASS Class B · one cabinet, 3 m</span>
       </div>
       <div class="tile">
         <span class="label">Narrowband spurs in 833–875&nbsp;MHz</span>
@@ -190,12 +195,14 @@
 
     <div class="card">
       <h3>Reported peaks in the 800&nbsp;MHz band — before vs after</h3>
-      <p class="cap">Each pair is one frequency: the <b style="color:var(--before)">orange</b> bar is the emission
-        <b>before</b> the firmware, the <b style="color:var(--good)">teal</b> bar <b>after</b>. Taller = stronger.
-        Before, every peak nearly reaches the red limit; after, they drop to the band's background floor (no spur
-        left). Y-axis starts at 30&nbsp;dBµV/m.</p>
+      <p class="cap">Each pair is one frequency: <b style="color:var(--before)">orange</b> is the emission
+        <b>before</b> the firmware, <b style="color:var(--good)">teal</b> <b>after</b>. The two dashed lines are
+        the EN 55032 limits — <b style="color:var(--muted)">Class A</b> (57, the basis these scans were tested to)
+        and the stricter <b style="color:var(--limit)">Class B</b> (47) that applies to a public installation.
+        Before, every peak clears Class A but <b>breaks into the Class B zone</b>; after, all fall below Class B.
+        Y-axis starts at 30&nbsp;dBµV/m.</p>
       <div class="chartbox">
-        <svg viewBox="0 0 720 360" role="img" aria-label="Grouped bar chart: for each frequency an orange before bar nearly reaching the limit and a much shorter teal after bar at the band floor.">
+        <svg viewBox="0 0 720 360" role="img" aria-label="Grouped bar chart: before bars breach the Class B limit line while the shorter after bars sit below it; both stay under Class A.">
           <!-- gridlines + y labels: 30..60 ; y(v)=300-(v-30)*9 -->
           <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--muted)">
             <line x1="70" y1="300" x2="690" y2="300" stroke="var(--line)"/><text x="60" y="304" text-anchor="end">30</text>
@@ -208,38 +215,45 @@
             <text x="20" y="175" text-anchor="middle" transform="rotate(-90 20 175)" fill="var(--ink-2)" font-size="12">Level [dBµV/m]</text>
           </g>
 
-          <!-- EN 55032 limit line at 57 -> y=57 (above every bar top, fully visible) -->
-          <line x1="70" y1="57" x2="690" y2="57" stroke="var(--limit)" stroke-width="2" stroke-dasharray="7 5"/>
-          <text x="686" y="51" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--limit)" font-weight="600">EN 55032 limit · 57</text>
+          <!-- Class B exceedance zone: above y=147 (47 dBµV/m) up to top -->
+          <rect x="70" y="30" width="620" height="117" fill="var(--limit)" opacity="0.07"/>
+          <text x="80" y="45" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--limit)" opacity="0.6">↑ exceeds Class B</text>
 
           <!-- grouped bars. centers 132,256,380,504,628. before x=c-44, after x=c+2, width 42.
                before vals 53.39/51.11/50.43/50.11/50.28 ; after = band floor ≈41 -> y=201 h=99 -->
           <g>
-            <!-- 833 -->
             <rect x="88" y="89.5" width="42" height="210.5" rx="4" fill="var(--before)"/>
             <rect x="134" y="201" width="42" height="99" rx="4" fill="var(--good-soft)" stroke="var(--good)" stroke-width="2"/>
-            <text x="109" y="83" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--before)" font-weight="600">53.4</text>
-            <text x="155" y="195" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--good)" font-weight="600">≈41</text>
-            <!-- 842 -->
             <rect x="212" y="110" width="42" height="190" rx="4" fill="var(--before)"/>
             <rect x="258" y="201" width="42" height="99" rx="4" fill="var(--good-soft)" stroke="var(--good)" stroke-width="2"/>
-            <text x="233" y="103.5" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--before)" font-weight="600">51.1</text>
-            <text x="279" y="195" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--good)" font-weight="600">≈41</text>
-            <!-- 850 -->
             <rect x="336" y="116.1" width="42" height="183.9" rx="4" fill="var(--before)"/>
             <rect x="382" y="201" width="42" height="99" rx="4" fill="var(--good-soft)" stroke="var(--good)" stroke-width="2"/>
-            <text x="357" y="109.6" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--before)" font-weight="600">50.4</text>
-            <text x="403" y="195" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--good)" font-weight="600">≈41</text>
-            <!-- 866 -->
             <rect x="460" y="119" width="42" height="181" rx="4" fill="var(--before)"/>
             <rect x="506" y="201" width="42" height="99" rx="4" fill="var(--good-soft)" stroke="var(--good)" stroke-width="2"/>
-            <text x="481" y="112.5" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--before)" font-weight="600">50.1</text>
-            <text x="527" y="195" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--good)" font-weight="600">≈41</text>
-            <!-- 875 -->
             <rect x="584" y="117.5" width="42" height="182.5" rx="4" fill="var(--before)"/>
             <rect x="630" y="201" width="42" height="99" rx="4" fill="var(--good-soft)" stroke="var(--good)" stroke-width="2"/>
-            <text x="605" y="111" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--before)" font-weight="600">50.3</text>
-            <text x="651" y="195" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--good)" font-weight="600">≈41</text>
+          </g>
+
+          <!-- limit lines ON TOP of bars so they stay fully visible -->
+          <!-- Class A at 57 -> y=57 (muted reference) -->
+          <line x1="70" y1="57" x2="690" y2="57" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"/>
+          <text x="686" y="51" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--muted)" font-weight="600">Class A · 57 (as tested)</text>
+          <!-- Class B at 47 -> y=147 (governing limit) -->
+          <line x1="70" y1="147" x2="690" y2="147" stroke="var(--limit)" stroke-width="2.5" stroke-dasharray="7 5"/>
+          <text x="686" y="141" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--limit)" font-weight="700">Class B · 47 (public site)</text>
+
+          <!-- value labels on top -->
+          <g font-family="IBM Plex Mono, monospace" font-weight="600">
+            <text x="109" y="83" text-anchor="middle" font-size="12" fill="var(--before)">53.4</text>
+            <text x="155" y="195" text-anchor="middle" font-size="11" fill="var(--good)">≈41</text>
+            <text x="233" y="103.5" text-anchor="middle" font-size="12" fill="var(--before)">51.1</text>
+            <text x="279" y="195" text-anchor="middle" font-size="11" fill="var(--good)">≈41</text>
+            <text x="357" y="109.6" text-anchor="middle" font-size="12" fill="var(--before)">50.4</text>
+            <text x="403" y="195" text-anchor="middle" font-size="11" fill="var(--good)">≈41</text>
+            <text x="481" y="112.5" text-anchor="middle" font-size="12" fill="var(--before)">50.1</text>
+            <text x="527" y="195" text-anchor="middle" font-size="11" fill="var(--good)">≈41</text>
+            <text x="605" y="111" text-anchor="middle" font-size="12" fill="var(--before)">50.3</text>
+            <text x="651" y="195" text-anchor="middle" font-size="11" fill="var(--good)">≈41</text>
           </g>
 
           <!-- x labels -->
@@ -256,7 +270,8 @@
       <div class="legend">
         <span><span class="sw" style="background:var(--before)"></span>Before firmware — measured peak</span>
         <span><span class="sw after"></span>After firmware — band floor (no discrete spur)</span>
-        <span><span class="sw line"></span>EN 55032 limit (57 dBµV/m)</span>
+        <span><span class="sw line"></span>Class B limit · 47 (public site)</span>
+        <span><span class="sw line-a"></span>Class A limit · 57 (as tested)</span>
       </div>
     </div>
   </section>
@@ -287,18 +302,18 @@
     <div class="tablebox">
       <table>
         <thead>
-          <tr><th>Frequency</th><th>Before — PK level</th><th>Before — margin</th><th>After</th></tr>
+          <tr><th>Frequency</th><th>Before PK</th><th>vs Class A · 57</th><th>vs Class B · 47</th><th>After</th></tr>
         </thead>
         <tbody>
-          <tr><td>833.3 MHz</td><td class="near">53.39</td><td class="near">3.61 dB</td><td class="ok">— <span class="tag gone">no spur</span></td></tr>
-          <tr><td>842.4 MHz</td><td class="near">51.11</td><td>5.89 dB</td><td class="ok">— <span class="tag gone">no spur</span></td></tr>
-          <tr><td>850.2 MHz</td><td class="near">50.43</td><td>6.57 dB</td><td class="ok">— <span class="tag gone">no spur</span></td></tr>
-          <tr><td>865.5 MHz</td><td class="near">50.11</td><td>6.89 dB</td><td class="ok">— <span class="tag gone">no spur</span></td></tr>
-          <tr><td>875.0 MHz</td><td class="near">50.28</td><td>6.72 dB</td><td class="ok">— <span class="tag gone">no spur</span></td></tr>
+          <tr><td>833.3 MHz</td><td>53.39</td><td class="ok">+3.6 <span class="tag pass">pass</span></td><td class="fail">−6.4 <span class="tag fail">fail</span></td><td class="ok">no spur <span class="tag gone">&lt; B</span></td></tr>
+          <tr><td>842.4 MHz</td><td>51.11</td><td class="ok">+5.9 <span class="tag pass">pass</span></td><td class="fail">−4.1 <span class="tag fail">fail</span></td><td class="ok">no spur <span class="tag gone">&lt; B</span></td></tr>
+          <tr><td>850.2 MHz</td><td>50.43</td><td class="ok">+6.6 <span class="tag pass">pass</span></td><td class="fail">−3.4 <span class="tag fail">fail</span></td><td class="ok">no spur <span class="tag gone">&lt; B</span></td></tr>
+          <tr><td>865.5 MHz</td><td>50.11</td><td class="ok">+6.9 <span class="tag pass">pass</span></td><td class="fail">−3.1 <span class="tag fail">fail</span></td><td class="ok">no spur <span class="tag gone">&lt; B</span></td></tr>
+          <tr><td>875.0 MHz</td><td>50.28</td><td class="ok">+6.7 <span class="tag pass">pass</span></td><td class="fail">−3.3 <span class="tag fail">fail</span></td><td class="ok">no spur <span class="tag gone">&lt; B</span></td></tr>
         </tbody>
       </table>
     </div>
-    <p class="cap" style="font-size:.78rem;color:var(--muted)">Levels in dBµV/m, EN 55032 limit 57&nbsp;dBµV/m. "After" values are from the post-firmware scan, where none of these frequencies rise above the reporting threshold; the whole 800&nbsp;MHz region sits at ≈&nbsp;40–41&nbsp;dBµV/m.</p>
+    <p class="cap" style="font-size:.78rem;color:var(--muted)">Levels in dBµV/m at 3&nbsp;m. Class A limit 57, Class B 47 (= Class A − 10&nbsp;dB). Before the firmware the band clears Class A but exceeds Class B at every line — the quasi-peak figures (49.5 / 50.3) fail Class B too. After, no discrete spur remains and the band floor (≈&nbsp;41) sits ~6&nbsp;dB below Class B.</p>
   </section>
 
   <section>
@@ -308,14 +323,15 @@
       <div class="note-card">
         <h3>In the lab, the fix works</h3>
         <p>The firmware removed the 833&nbsp;MHz spur and the four lines above it. The quasi-peak the
-          standard measures dropped by more than 12&nbsp;dB, and the band now passes with a comfortable
-          margin in both polarisations. This is solid, repeatable chamber evidence that the adjustment
-          does what it was meant to do.</p>
+          standard measures dropped by more than 12&nbsp;dB — enough to turn the band from a Class B
+          failure into a ~6&nbsp;dB pass, in both polarisations. This is solid, repeatable chamber evidence
+          that the adjustment does what it was meant to do.</p>
       </div>
       <div class="note-card caution">
         <h3>Two things the lab scan can't settle</h3>
-        <p><b>Scale.</b> This is one cabinet at 3&nbsp;m. A full facade of many cabinets sums to a much
-          higher field on site, so the on-site level must still be confirmed at the real installation.</p>
+        <p><b>Scale.</b> This is one cabinet at 3&nbsp;m, where the fixed wall clears Class B by ~6&nbsp;dB.
+          One screen is 272 cabinets; their emissions sum to roughly +16 to +24&nbsp;dB, so the assembled
+          facade can still exceed Class B even after the fix. Only an on-site measurement settles it.</p>
         <p><b>The victim's view.</b> Spread-spectrum lowers the sharp peak but spreads the same energy
           over a wider band. A mobile receiver adds up power across its whole channel, so the on-site
           check should measure <b>in-channel power in the uplink band</b>, not only the peak — that is
